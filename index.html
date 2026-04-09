@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MoodQuest</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mq: {
+              bg: '#efe7d7',
+              shell: '#f5ecdd',
+              paper: '#fff8ee',
+              ink: '#1c1a17',
+              muted: '#676057',
+              line: '#cfc3b0',
+              greenScreen: '#d7f7a8',
+              greenScreen2: '#bfe57a',
+              purple: '#7e63ff',
+              coral: '#ff6c57',
+              blue: '#4c8dff',
+              yellow: '#ffd95e'
+            }
+          },
+          fontFamily: {
+            display: ['Manrope', 'sans-serif'],
+            body: ['Inter', 'sans-serif']
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(12px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
+            },
+            bunnyFloat: {
+              '0%, 100%': { transform: 'translate(-50%, -50%) translateY(0px)' },
+              '50%': { transform: 'translate(-50%, -50%) translateY(-4px)' }
+            },
+            blinkGlow: {
+              '0%, 100%': { opacity: '.65' },
+              '50%': { opacity: '1' }
+            }
+          },
+          animation: {
+            fadeUp: 'fadeUp .45s ease forwards',
+            bunnyFloat: 'bunnyFloat 3.8s ease-in-out infinite',
+            blinkGlow: 'blinkGlow 2.2s ease-in-out infinite'
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./styles.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="./supabase-config.js"></script>
+</head>
+<body class="min-h-screen bg-mq-bg font-body text-mq-ink">
+  <div class="mq-app-shell min-h-screen">
+    <main class="mx-auto min-h-screen w-full max-w-md px-4 py-4 sm:px-6 sm:py-6">
+      <header class="mq-topbar mb-4">
+        <div class="flex items-center gap-3">
+          <div class="mq-logo">MQ</div>
+          <div>
+            <p class="mq-eyebrow">MOODQUEST</p>
+            <h1 class="font-display text-[1.7rem] font-extrabold leading-none tracking-[-0.05em]">
+              tamagotchi mode
+            </h1>
+          </div>
+        </div>
+
+        <button
+          id="themeToggle"
+          class="mq-theme-btn"
+          type="button"
+          aria-label="Сменить тему"
+        >
+          <span id="themeIcon">🌙</span>
+        </button>
+      </header>
+
+      <section id="appRoot" class="space-y-4"></section>
+    </main>
+  </div>
+
+  <template id="loadingTemplate">
+    <div class="mq-panel animate-fadeUp text-center">
+      <div class="flex justify-end mb-2">
+      </div>
+      <div class="mq-loader mx-auto mb-4"></div>
+      <h2 class="font-display text-3xl font-extrabold tracking-[-0.05em]">Загрузка</h2>
+      <p class="mt-2 text-sm text-mq-muted">Подготавливаем систему MoodQuest…</p>
+    </div>
+  </template>
+
+  <template id="authTemplate">
+    <div class="animate-fadeUp space-y-4">
+      <section class="mq-device-poster">
+        <div class="mq-device-topbar">
+          <div class="mq-chip">public project / mobile first</div>
+          <div class="mq-device-status">
+            <span>signal</span>
+            <span>care mode</span>
+          </div>
+        </div>
+
+        <div class="mq-device-copy">
+          <p class="mq-kicker">Pocket mood device</p>
+
+          <h2 class="mq-device-title">
+            Тамагочи
+            <br />
+            для эмоций
+            <br />
+            <span>и терапии</span>
+          </h2>
+
+          <p class="mq-device-text">
+            Игровой эмоциональный check-in: пациент заботится о питомце, а система
+            превращает это в понятные сигналы для врача.
+          </p>
+        </div>
+
+        <div class="mq-device-shell mq-device-shell--interactive">
+          <div class="mq-device-loop"></div>
+          <div class="mq-device-hole"></div>
+          <div class="mq-device-screw mq-device-screw--tl"></div>
+          <div class="mq-device-screw mq-device-screw--tr"></div>
+          <div class="mq-device-screw mq-device-screw--bl"></div>
+          <div class="mq-device-screw mq-device-screw--br"></div>
+
+          <div
+            class="mq-device-screen"
+            id="heroPetScreen"
+            data-mode="care"
+            role="button"
+            tabindex="0"
+            aria-label="Интерактивный экран тамагочи"
+          >
+            <div class="mq-screen-grid"></div>
+            <div class="mq-screen-noise"></div>
+
+            <div class="mq-screen-hud mq-screen-hud--top">
+              <span class="mq-hud-icon">❤️</span>
+              <span class="mq-hud-icon">⚡</span>
+              <span class="mq-hud-icon">🌙</span>
+            </div>
+
+            <div class="mq-screen-label mq-screen-label--left" id="heroModeLabel">CARE MODE</div>
+            <div class="mq-screen-label mq-screen-label--right" id="heroDayLabel">DAY 01</div>
+
+            <div class="mq-bunny-wrap" id="heroPetWrap">
+              <img
+                src="https://gobcakggcbaswsaqpvbn.supabase.co/storage/v1/object/public/pet-assets/bunny/stage-1/happy.png"
+                alt="MoodQuest Bunny"
+                class="mq-bunny-image"
+                id="heroPetImage"
+              />
+            </div>
+
+            <div class="mq-screen-status" id="heroStatusLabel">STATUS: HAPPY</div>
+            <div class="mq-screen-tip" id="heroTipLabel">tap pet / press buttons</div>
+          </div>
+
+          <div class="mq-device-buttons">
+            <button
+              type="button"
+              class="mq-device-btn mq-device-btn--purple"
+              data-hero-mode="care"
+              aria-label="Режим care"
+            ></button>
+
+            <button
+              type="button"
+              class="mq-device-btn mq-device-btn--yellow"
+              data-hero-mode="mood"
+              aria-label="Режим mood"
+            ></button>
+
+            <button
+              type="button"
+              class="mq-device-btn mq-device-btn--coral"
+              data-hero-mode="rest"
+              aria-label="Режим rest"
+            ></button>
+          </div>
+        </div>
+
+        <div class="mq-facts-row">
+          <div class="mq-mini-card">
+            <strong>CARE LOG</strong>
+            <p>feed, pet, walk, sleep</p>
+          </div>
+          <div class="mq-mini-card">
+            <strong>RISK FLAGS</strong>
+            <p>aggression and inactivity</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mq-auth-shell">
+        <div class="mq-auth-head">
+          <div>
+            <p class="mq-eyebrow">ACCESS</p>
+            <h3 class="font-display text-[1.75rem] font-extrabold tracking-[-0.05em]">
+              Войти в MoodQuest
+            </h3>
+          </div>
+          <div class="mq-auth-mark">→</div>
+        </div>
+
+        <div class="mq-segment">
+          <button id="tabLogin" class="mq-segment-btn mq-segment-btn--active" type="button">
+            Вход
+          </button>
+          <button id="tabRegister" class="mq-segment-btn" type="button">
+            Регистрация
+          </button>
+        </div>
+
+        <form id="authForm" class="mt-5 space-y-4">
+          <div id="roleChooser" class="space-y-2 hidden">
+            <label class="mq-label">Роль</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" class="mq-role-btn mq-role-btn--active" data-role="patient">
+                Пациент
+              </button>
+              <button type="button" class="mq-role-btn" data-role="doctor">
+                Врач
+              </button>
+            </div>
+          </div>
+
+          <div id="fullNameField" class="space-y-2 hidden">
+            <label for="fullName" class="mq-label">Имя и фамилия</label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              class="mq-input"
+              placeholder="Например, Анна Иванова"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="email" class="mq-label">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              class="mq-input"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="password" class="mq-label">Пароль</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              class="mq-input"
+              placeholder="Минимум 6 символов"
+              required
+            />
+          </div>
+
+          <button id="authSubmitBtn" type="submit" class="mq-primary-btn w-full">
+            Войти
+          </button>
+        </form>
+
+        <div class="mq-note mt-4">
+          После входа пациент вводит код врача и выбирает питомца, а врач
+          видит динамику действий, риски и изменения состояния.
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <template id="inviteTemplate">
+  <div class="animate-fadeUp space-y-4">
+    <section class="mq-panel text-center">
+      <div class="mb-2 flex justify-end">
+        <button id="logoutBtnInvite" class="mq-icon-btn" type="button" aria-label="Выйти">
+          🚪
+        </button>
+      </div>
+
+      <div class="mq-invite-mark">↗</div>
+      <p class="mq-eyebrow">CONNECT</p>
+      <h2 class="font-display text-[2rem] font-extrabold tracking-[-0.05em]">
+        Подключение к врачу
+      </h2>
+        <p class="mt-2 text-sm leading-6 text-mq-muted">
+          Введи одноразовый код, чтобы привязать аккаунт пациента к кабинету врача.
+        </p>
+
+        <form id="inviteForm" class="mt-6 space-y-4 text-left">
+          <div class="space-y-2">
+            <label for="inviteCode" class="mq-label">Код приглашения</label>
+            <input
+              id="inviteCode"
+              name="inviteCode"
+              type="text"
+              class="mq-input text-center text-lg uppercase tracking-[0.28em]"
+              placeholder="DEMO2026"
+              required
+            />
+          </div>
+
+          <button type="submit" class="mq-primary-btn w-full">
+            Подключиться
+          </button>
+        </form>
+      </section>
+    </div>
+  </template>
+
+  <template id="onboardingTemplate">
+  <div class="animate-fadeUp space-y-4">
+    <section class="mq-panel">
+      <div class="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p class="mq-eyebrow">MOOD CAPSULE</p>
+          <h2 class="font-display text-[2rem] font-extrabold tracking-[-0.05em]">
+            Первый питомец
+          </h2>
+        </div>
+        <div class="mq-sticker">🎁</div>
+      </div>
+
+      <p class="text-sm leading-6 text-mq-muted" id="onboardingDescription">
+        Нажми, чтобы открыть своего эмоционального спутника.
+      </p>
+
+      <div class="mq-gacha-shell mt-5">
+        <div class="mq-gacha-screen" id="gachaScreen">
+          <div class="mq-screen-grid"></div>
+          <div class="mq-screen-noise"></div>
+
+          <div class="mq-screen-label mq-screen-label--left">MOOD CAPSULE</div>
+          <div class="mq-screen-label mq-screen-label--right" id="gachaPhaseLabel">READY</div>
+
+          <div class="mq-gacha-visual" id="gachaVisual">
+            <div class="mq-capsule" id="gachaCapsule">
+              <div class="mq-capsule-top"></div>
+              <div class="mq-capsule-bottom"></div>
+              <div class="mq-capsule-core"></div>
+            </div>
+
+            <div class="mq-revealed-pet hidden" id="revealedPetWrap">
+              <img id="revealedPetImage" class="mq-revealed-pet-image" alt="Выпавший питомец" />
+            </div>
+          </div>
+
+          <div class="mq-screen-status" id="gachaStatusLabel">STATUS: WAITING</div>
+          <div class="mq-screen-tip" id="gachaTipLabel">tap to open</div>
+        </div>
+      </div>
+
+      <div id="gachaActionArea" class="mt-5">
+        <button id="openCapsuleBtn" type="button" class="mq-primary-btn w-full">
+          Открыть капсулу
+        </button>
+      </div>
+
+      <form id="adoptPetForm" class="mt-5 space-y-4 hidden">
+        <div class="rounded-[20px] border border-[#cfc3b0] bg-[#f3eadc] p-4 dark:border-[#343434] dark:bg-[#232323]">
+          <p class="text-xs font-extrabold uppercase tracking-[0.14em] text-mq-muted">
+            Тебе выпал питомец
+          </p>
+          <h3 id="revealedPetName" class="mt-2 font-display text-[1.6rem] font-extrabold tracking-[-0.05em]">
+            ...
+          </h3>
+          <p class="mt-2 text-sm leading-6 text-mq-muted">
+            Дай ему имя и начни ежедневный check-in.
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <label for="petNameInput" class="mq-label">Имя питомца</label>
+          <input
+            id="petNameInput"
+            name="petName"
+            type="text"
+            class="mq-input"
+            placeholder="Например, Моти"
+            required
+          />
+        </div>
+
+        <button id="adoptPetBtn" type="submit" class="mq-primary-btn w-full">
+          Приютить питомца
+        </button>
+      </form>
+    </section>
+  </div>
+</template>
+
+  <template id="doctorDashboardTemplate">
+  <div class="animate-fadeUp space-y-4">
+    <section class="mq-panel mq-doctor-hero">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="mq-eyebrow">DOCTOR MODE</p>
+          <h2 class="font-display text-[2rem] font-extrabold tracking-[-0.05em]" id="doctorNameHeading">
+            Кабинет врача
+          </h2>
+          <p class="mt-2 text-sm leading-6 text-mq-muted">
+            Отслеживай динамику пациентов, создавай коды приглашения и быстро замечай риски.
+          </p>
+        </div>
+        <div class="mq-doctor-badge">🩺</div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-2 gap-3">
+        <div class="mq-stat-card">
+          <span class="mq-stat-card__label">Пациенты</span>
+          <strong class="mq-stat-card__value" id="doctorPatientsCount">0</strong>
+        </div>
+        <div class="mq-stat-card">
+          <span class="mq-stat-card__label">Алерты</span>
+          <strong class="mq-stat-card__value" id="doctorAlertsCount">0</strong>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-stretch gap-2">
+      <button id="createInviteBtn" class="mq-primary-btn flex-1" type="button">
+      Пригласить пациента
+      </button>
+      <button id="demoRiskBtn" class="mq-demo-risk-btn" type="button">
+      Demo RED
+      </button>
+      <button id="logoutBtnDoctor" class="mq-icon-btn" type="button" aria-label="Выйти">
+        🚪
+      </button>
+</div>
+    </section>
+
+    <section class="mq-panel hidden" id="inviteResultPanel">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="mq-eyebrow">INVITE CODE</p>
+          <h3 class="font-display text-[1.55rem] font-extrabold tracking-[-0.05em]">
+            Код приглашения создан
+          </h3>
+        </div>
+        <div class="mq-mini-chip">7 дней</div>
+      </div>
+
+      <div class="mq-invite-code-box mt-4">
+        <span id="doctorInviteCode">--------</span>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <button id="copyInviteBtn" class="mq-secondary-btn" type="button">
+          Скопировать
+        </button>
+        <button id="hideInviteBtn" class="mq-secondary-btn" type="button">
+          Скрыть
+        </button>
+      </div>
+    </section>
+
+    <section class="mq-panel">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p class="mq-eyebrow">ALERTS</p>
+          <h3 class="font-display text-[1.55rem] font-extrabold tracking-[-0.05em]">
+            Сигналы системы
+          </h3>
+        </div>
+        <div class="mq-mini-chip" id="doctorAlertsSummary">0 total</div>
+      </div>
+
+      <div id="doctorAlertsList" class="space-y-3">
+        <!-- alerts -->
+      </div>
+    </section>
+
+    <section class="mq-panel">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p class="mq-eyebrow">PATIENTS</p>
+          <h3 class="font-display text-[1.55rem] font-extrabold tracking-[-0.05em]">
+            Пациенты
+          </h3>
+        </div>
+        <div class="mq-mini-chip" id="doctorPatientsSummary">0 active</div>
+      </div>
+
+      <div id="doctorPatientsList" class="space-y-3">
+        <!-- patient cards -->
+      </div>
+    </section>
+  </div>
+
+  <section class="mq-panel">
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <div>
+      <p class="mq-eyebrow">ANALYTICS</p>
+      <h3 class="font-display text-[1.55rem] font-extrabold tracking-[-0.05em]">
+        Динамика пациента
+      </h3>
+    </div>
+    <div class="mq-mini-chip">14 дней</div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="space-y-2">
+      <label for="doctorPatientSelect" class="mq-label">Пациент для анализа</label>
+      <select id="doctorPatientSelect" class="mq-input">
+        <option value="">Выбери пациента</option>
+      </select>
+    </div>
+
+    <div class="mq-chart-card">
+      <div class="mq-chart-card__head">
+        <span class="mq-chart-card__title">Активность по дням</span>
+        <span class="mq-chart-card__meta">действий в день</span>
+      </div>
+      <canvas id="doctorActionsChart"></canvas>
+    </div>
+
+    <div class="mq-chart-card">
+      <div class="mq-chart-card__head">
+        <span class="mq-chart-card__title">Уровень риска</span>
+        <span class="mq-chart-card__meta">зеленый / желтый / красный</span>
+      </div>
+      <canvas id="doctorRiskChart"></canvas>
+    </div>
+  </div>
+</section>
+</template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
